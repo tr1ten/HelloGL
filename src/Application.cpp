@@ -1,10 +1,64 @@
+// for modern openGl header files and linking to function implementations
 #include <GL/glew.h>
+// providing simple cross platform api 
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <string>
+#include <fstream>
+struct Shader
+{
+    std::string vertex;
+    std::string fragment;
+};
+enum ShaderType
+{
+    VERTEX,
+    FRAGMENT
+};
+// getting shaders from file
+static Shader getShaders()
+{
+    std::string temp;
+    Shader shader;
+    ShaderType stype;
+    std::ifstream file("../res/shaders/basic.shader");
+    while (getline(file, temp))
+    {
+        if (temp.find("#shader") != std::string::npos)
+        {
+            if (temp.find("vertex") != std::string::npos)
+            {
+                stype = VERTEX;
+            }
+            else
+            {
+                stype = FRAGMENT;
+            }
+        }
+        else
+        {
+            switch (stype)
+            {
+            case VERTEX:
+                shader.vertex += "\n" + temp;
+                break;
+            case FRAGMENT:
+                shader.fragment += "\n" + temp;
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+    file.close();
+    return shader;
+}
+// compiling shader 
 static unsigned int CompileShader(unsigned int type, const std::string &source)
 {
     unsigned int id = glCreateShader(type);
-    const char* src = source.c_str();
+    const char *src = source.c_str();
     glShaderSource(id, 1, &src, nullptr);
     glCompileShader(id);
     int result;
@@ -23,6 +77,7 @@ static unsigned int CompileShader(unsigned int type, const std::string &source)
     }
     return id;
 }
+// creating all shaders and linking with program
 static unsigned int CreateShader(const std::string &vertexShader, const std::string &fragmentShader)
 {
     unsigned int program = glCreateProgram();
@@ -31,8 +86,9 @@ static unsigned int CreateShader(const std::string &vertexShader, const std::str
     glAttachShader(program, vs);
     glAttachShader(program, fs);
     glLinkProgram(program);
+    //checking for link error 
     GLint program_linked;
-
+    
     glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
     std::cout << "Program link status: " << program_linked << std::endl;
     if (program_linked != GL_TRUE)
@@ -48,10 +104,9 @@ static unsigned int CreateShader(const std::string &vertexShader, const std::str
     glDeleteShader(fs);
     return program;
 }
-int main(void)
+int main(int argc, char * argv[])
 {
-    GLFWwindow* window;
-
+    GLFWwindow *window;
     /* Initialize the library */
     if (!glfwInit())
         return -1;
@@ -66,6 +121,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+    // catching glew error 
     if (glewInit() != GLEW_OK)
     {
         std::cout << "ERROR" << std::endl;
@@ -74,38 +130,24 @@ int main(void)
     {
         std::cout << "Working" << std::endl;
     }
-
+    // vertices for triangle
     float vertices[6] = {
         -0.5f, -0.5f,
         0.0f, 0.5f,
-        0.5f, -0.5f
-        };
+        0.5f, -0.5f};
+    // creating variable to store buffer 
     unsigned int buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    // storing out vertices data into it
     glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), vertices, GL_STATIC_DRAW);
+    // enabling vertex attrib
     glEnableVertexAttribArray(0);
+    // telling gpu how to interpret the data
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
-
-    const std::string vs = R"glsl(
-        #version 330 core
-
-        layout(location = 0) in vec4 position;
-
-        void main(){
-        gl_Position = position;
-        }
-        )glsl";
-    const std::string fs = R"glsl(
-        #version 330 core
-
-        layout(location = 0) out vec4 color;
-
-        void main(){
-        color = vec4(1.0,0.0,0.0,1.0);
-        }
-        )glsl";
-    unsigned int shader = CreateShader(vs, fs);
+    // defining our custom shaders
+    Shader shaders = getShaders();
+    unsigned int shader = CreateShader(shaders.vertex, shaders.fragment);
     glUseProgram(shader);
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
