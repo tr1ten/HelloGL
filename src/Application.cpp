@@ -4,7 +4,24 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <string>
+#include <csignal>
 #include <fstream>
+#define GLwrapper(x) clearErrorLog(); \
+    x;\
+    if(checkLogError()) std::raise(SIGINT)
+
+static void clearErrorLog(){
+    while(glGetError()!=GL_NO_ERROR);
+}
+static bool checkLogError(){
+    GLenum errorCode = glGetError();
+    if(errorCode != GL_NO_ERROR){
+        std::cout << "error occured " << errorCode << std::endl;
+        return true;
+    }
+    return false;
+}
+
 struct Shader
 {
     std::string vertex;
@@ -131,20 +148,34 @@ int main(int argc, char * argv[])
         std::cout << "Working" << std::endl;
     }
     // vertices for triangle
-    float vertices[6] = {
+    float vertices[] = {
         -0.5f, -0.5f,
-        0.0f, 0.5f,
-        0.5f, -0.5f};
+        0.5f, -0.5f,
+        0.5f, 0.5f,
+        -0.5f, 0.5f,
+
+        
+    };
     // creating variable to store buffer 
     unsigned int buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     // storing out vertices data into it
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), vertices, GL_STATIC_DRAW);
     // enabling vertex attrib
     glEnableVertexAttribArray(0);
     // telling gpu how to interpret the data
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    // index buffer for stop repeating ourselves and hence saving gpu memory
+    unsigned int  indices[] = {
+        0,1,2,
+        2,3,0
+    };
+    unsigned int ibo;
+    glGenBuffers(1, &ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+
     // defining our custom shaders
     Shader shaders = getShaders();
     unsigned int shader = CreateShader(shaders.vertex, shaders.fragment);
@@ -155,7 +186,7 @@ int main(int argc, char * argv[])
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLES, 0, 3);
-
+        GLwrapper(glDrawElements(GL_TRIANGLES,6,GL_INT,nullptr));
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
