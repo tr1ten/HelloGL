@@ -1,21 +1,27 @@
 // for modern openGl header files and linking to function implementations
 #include <GL/glew.h>
-// providing simple cross platform api 
+// providing simple cross platform api
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <string>
 #include <csignal>
 #include <fstream>
-#define GLwrapper(x) clearErrorLog(); \
-    x;\
-    if(checkLogError()) std::raise(SIGINT)
+#define GLwrapper(x)     \
+    clearErrorLog();     \
+    x;                   \
+    if (checkLogError()) \
+    std::raise(SIGINT)
 
-static void clearErrorLog(){
-    while(glGetError()!=GL_NO_ERROR);
+static void clearErrorLog()
+{
+    while (glGetError() != GL_NO_ERROR)
+        ;
 }
-static bool checkLogError(){
+static bool checkLogError()
+{
     GLenum errorCode = glGetError();
-    if(errorCode != GL_NO_ERROR){
+    if (errorCode != GL_NO_ERROR)
+    {
         std::cout << "error occured " << errorCode << std::endl;
         return true;
     }
@@ -71,7 +77,7 @@ static Shader getShaders()
     file.close();
     return shader;
 }
-// compiling shader 
+// compiling shader
 static unsigned int CompileShader(unsigned int type, const std::string &source)
 {
     unsigned int id = glCreateShader(type);
@@ -103,9 +109,9 @@ static unsigned int CreateShader(const std::string &vertexShader, const std::str
     glAttachShader(program, vs);
     glAttachShader(program, fs);
     glLinkProgram(program);
-    //checking for link error 
+    //checking for link error
     GLint program_linked;
-    
+
     glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
     std::cout << "Program link status: " << program_linked << std::endl;
     if (program_linked != GL_TRUE)
@@ -121,7 +127,7 @@ static unsigned int CreateShader(const std::string &vertexShader, const std::str
     glDeleteShader(fs);
     return program;
 }
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     GLFWwindow *window;
     /* Initialize the library */
@@ -138,7 +144,8 @@ int main(int argc, char * argv[])
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
-    // catching glew error 
+    glfwSwapInterval(1);
+    // catching glew error
     if (glewInit() != GLEW_OK)
     {
         std::cout << "ERROR" << std::endl;
@@ -149,14 +156,17 @@ int main(int argc, char * argv[])
     }
     // vertices for triangle
     float vertices[] = {
-        -0.5f, -0.5f,
-        0.5f, -0.5f,
-        0.5f, 0.5f,
-        -0.5f, 0.5f,
+        -0.5f,
+        -0.5f,
+        0.5f,
+        -0.5f,
+        0.5f,
+        0.5f,
+        -0.5f,
+        0.5f,
 
-        
     };
-    // creating variable to store buffer 
+    // creating variable to store buffer
     unsigned int buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
@@ -167,10 +177,9 @@ int main(int argc, char * argv[])
     // telling gpu how to interpret the data
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
     // index buffer for stop repeating ourselves and hence saving gpu memory
-    unsigned int  indices[] = {
-        0,1,2,
-        2,3,0
-    };
+    unsigned int indices[] = {
+        0, 1, 2,
+        2, 3, 0};
     unsigned int ibo;
     glGenBuffers(1, &ibo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
@@ -180,16 +189,29 @@ int main(int argc, char * argv[])
     Shader shaders = getShaders();
     unsigned int shader = CreateShader(shaders.vertex, shaders.fragment);
     glUseProgram(shader);
+    GLwrapper(int location = glGetUniformLocation(shader, "u_Color"));
+    GLwrapper(glUniform4f(location, 0.5f, 0.5f, 0.5f, 0.9f));
+    float increment = 0.05f;
+    float r = 0.0;
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLES, 0, 3);
-        GLwrapper(glDrawElements(GL_TRIANGLES,6,GL_INT,nullptr));
+        GLwrapper(glUniform4f(location, r, 0.5f, 0.5f, 0.9f));
+        GLwrapper(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
-
+        if (r > 1.0f)
+        {
+            increment = -0.05f;
+        }
+        else if (r < 0.0f)
+        {
+            increment = 0.05f;
+        }
+        r += increment;
         /* Poll for and process events */
         glfwPollEvents();
     }
